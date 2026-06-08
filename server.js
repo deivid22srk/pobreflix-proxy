@@ -337,11 +337,11 @@ function enforceMimeType(req, res, targetUrl) {
   const finalPath = targetUrl ? new URL(targetUrl).pathname : urlPath;
   const finalQuery = targetUrl ? new URL(targetUrl).search : queryStr;
   
-  if (finalQuery.includes('do=getVideo') || finalPath.includes('scripts.php') || finalPath.endsWith('.js') || finalPath.includes('/js/')) {
+  if (finalQuery.includes('do=getVideo') || finalPath.includes('scripts.php') || finalPath.endsWith('.js') || finalPath.includes('/js/') || finalPath.includes('/assets/') && finalPath.endsWith('.js')) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  } else if (finalPath.endsWith('.css') || finalPath.includes('/css/')) {
+  } else if (finalPath.endsWith('.css') || finalPath.includes('/css/') || finalPath.includes('/assets/') && finalPath.endsWith('.css')) {
     res.setHeader('Content-Type', 'text/css; charset=utf-8');
-  } else if (finalPath.includes('/embed2/') || finalPath.includes('/movie/') || finalPath.includes('/tvshow/') || finalPath.includes('proxy-player')) {
+  } else if (finalPath.includes('/embed2/') || finalPath.includes('/movie/') || finalPath.includes('/tvshow/') || finalPath.includes('proxy-player') || finalPath.includes('upns.live')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
   }
 }
@@ -376,7 +376,7 @@ app.get('/api/proxy-player', async (req, res) => {
     res.status(response.status);
 
     const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('text/html') || targetUrl.includes('/embed2/') || targetUrl.includes('/movie/') || targetUrl.includes('/tvshow/')) {
+    if (contentType.includes('text/html') || targetUrl.includes('/embed2/') || targetUrl.includes('/movie/') || targetUrl.includes('/tvshow/') || targetUrl.includes('upns.live')) {
       let html = await response.text();
       
       // Rewrite Plenoflu relative resources & API calls
@@ -389,6 +389,14 @@ app.get('/api/proxy-player', async (req, res) => {
       html = html.replace(/https:\/\/linktudi\.com/g, '/proxy-linktudi');
       html = html.replace(/http:\/\/linktudi\.com/g, '/proxy-linktudi');
       html = html.replace(/player_base_url\s*=\s*['"`]https:\/\/linktudi\.com['"`]/g, "player_base_url = '/proxy-linktudi'");
+
+      // Rewrite UPNS relative resources and links
+      html = html.replace(/https:\/\/dev8k\.upns\.live/g, '/proxy-upns');
+      html = html.replace(/http:\/\/dev8k\.upns\.live/g, '/proxy-upns');
+      html = html.replace(/src="\/assets\//g, 'src="/proxy-upns/assets/');
+      html = html.replace(/href="\/assets\//g, 'href="/proxy-upns/assets/');
+      html = html.replace(/url\(\/assets\//g, 'url(/proxy-upns/assets/');
+      html = html.replace(/"\/assets\//g, '"/proxy-upns/assets/');
 
       res.send(html);
     } else {
@@ -540,9 +548,83 @@ app.all('/proxy-linktudi/*', async (req, res) => {
   await handleLinktudiRequest(req, res, relativePath);
 });
 
-// 4. Catch-all /player/* relative paths proxying directly to Linktudi
+// 4. Proxy Route for UPNS requests
+const handleUpnsRequest = async (req, res, relativePath) => {
+  const targetUrl = `https://dev8k.upns.live${relativePath}`;
+  console.log(`[PROXY-UPNS] Forwarding: ${req.method} ${req.url} -> ${targetUrl}`);
+
+  try {
+    const headers = cleanRequestHeaders(req.headers, 'dev8k.upns.live');
+    headers['Referer'] = 'https://plenoflu.com/';
+    headers['Origin'] = 'https://plenoflu.com';
+    headers['User-Agent'] = USER_AGENT;
+
+    const fetchOptions = {
+      method: req.method,
+      headers
+    };
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      if (req.headers['content-type']?.includes('application/json')) {
+        fetchOptions.body = JSON.stringify(req.body);
+      } else {
+        fetchOptions.body = new URLSearchParams(req.body).toString();
+      }
+    }
+
+    const response = await fetch(targetUrl, fetchOptions);
+
+    const setCookie = response.headers.getSetCookie();
+    if (setCookie && setCookie.length > 0) {
+      res.setHeader('Set-Cookie', setCookie.map(cleanSetCookie));
+    }
+
+    cleanResponseHeaders(res, response.headers);
+    enforceMimeType(req, res, targetUrl);
+    res.status(response.status);
+
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html') || contentType.includes('application/javascript') || contentType.includes('text/css') || contentType.includes('application/json')) {
+      let text = await response.text();
+      text = text.replace(/https:\/\/dev8k\.upns\.live/g, '/proxy-upns');
+      text = text.replace(/http:\/\/dev8k\.upns\.live/g, '/proxy-upns');
+      
+      // Make sure relative assets of upns.live load via proxy
+      text = text.replace(/src="\/assets\//g, 'src="/proxy-upns/assets/');
+      text = text.replace(/href="\/assets\//g, 'href="/proxy-upns/assets/');
+      text = text.replace(/url\(\/assets\//g, 'url(/proxy-upns/assets/');
+      text = text.replace(/"\/assets\//g, '"/proxy-upns/assets/');
+      
+      res.send(text);
+    } else {
+      const buffer = await response.arrayBuffer();
+      res.send(Buffer.from(buffer));
+    }
+  } catch (error) {
+    console.error('[PROXY-UPNS] Error:', error);
+    res.status(500).send('Erro no proxy UPNS.');
+  }
+};
+
+app.all('/proxy-upns/*', async (req, res) => {
+  const relativePath = req.url.replace('/proxy-upns', '');
+  await handleUpnsRequest(req, res, relativePath);
+});
+
+// 5. Catch-all /player/* relative paths proxying directly to Linktudi
 app.all('/player/*', async (req, res) => {
   await handleLinktudiRequest(req, res, req.url);
+});
+
+// 6. Catch-all /assets/* relative paths proxying directly to UPNS if they are requested relatively by iframe
+app.all('/assets/*', async (req, res) => {
+  // Check where the referer was from. If referer contains proxy-upns or upns.live, proxy to UPNS
+  const referer = req.headers['referer'] || '';
+  if (referer.includes('proxy-upns') || referer.includes('upns.live')) {
+    await handleUpnsRequest(req, res, req.url);
+  } else {
+    res.status(404).send('Not found');
+  }
 });
 
 // Start Server
