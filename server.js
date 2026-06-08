@@ -186,6 +186,7 @@ app.get('/api/details', async (req, res) => {
         
         const episodes = [];
         $(el).find('.episodios li').each((j, epEl) => {
+          if ($(epEl).hasClass('none')) return;
           const numerando = $(epEl).find('.numerando').text().trim();
           const epName = $(epEl).find('.episodiotitle a').text().trim();
           const href = $(epEl).find('.episodiotitle a').attr('href') || '';
@@ -296,6 +297,9 @@ function cleanRequestHeaders(headers, targetHost) {
   if (headers['content-type']) {
     cleaned['content-type'] = headers['content-type'];
   }
+  if (headers['x-requested-with']) {
+    cleaned['x-requested-with'] = headers['x-requested-with'];
+  }
   
   cleaned.host = targetHost;
   return cleaned;
@@ -322,9 +326,10 @@ function cleanResponseHeaders(res, targetHeaders) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 }
 
-// Strips 'domain' and 'secure' attributes from cookies so they can be accepted on localhost
+// Strips 'domain' and 'secure' attributes from cookies and ensures SameSite=Lax so they can be accepted on localhost
 function cleanSetCookie(cookieHeaderValue) {
   let cleaned = cookieHeaderValue.replace(/domain\s*=\s*[^;]+/gi, '');
+  cleaned = cleaned.replace(/samesite\s*=\s*none/gi, 'SameSite=Lax');
   cleaned = cleaned.replace(/secure/gi, '');
   cleaned = cleaned.replace(/;\s*;/g, ';').replace(/;\s*$/, '');
   return cleaned;
