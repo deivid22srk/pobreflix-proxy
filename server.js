@@ -322,6 +322,30 @@ function cleanResponseHeaders(res, targetHeaders) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 }
 
+// Strips 'domain' and 'secure' attributes from cookies so they can be accepted on localhost
+function cleanSetCookie(cookieHeaderValue) {
+  let cleaned = cookieHeaderValue.replace(/domain\s*=\s*[^;]+/gi, '');
+  cleaned = cleaned.replace(/secure/gi, '');
+  cleaned = cleaned.replace(/;\s*;/g, ';').replace(/;\s*$/, '');
+  return cleaned;
+}
+
+// Force the correct MIME type based on URL path/query to prevent browser nosniff or type mismatch errors
+function enforceMimeType(req, res, targetUrl) {
+  const urlPath = (req.originalUrl || req.url || '').split('?')[0];
+  const queryStr = (req.originalUrl || req.url || '');
+  const finalPath = targetUrl ? new URL(targetUrl).pathname : urlPath;
+  const finalQuery = targetUrl ? new URL(targetUrl).search : queryStr;
+  
+  if (finalQuery.includes('do=getVideo') || finalPath.includes('scripts.php') || finalPath.endsWith('.js') || finalPath.includes('/js/')) {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  } else if (finalPath.endsWith('.css') || finalPath.includes('/css/')) {
+    res.setHeader('Content-Type', 'text/css; charset=utf-8');
+  } else if (finalPath.includes('/embed2/') || finalPath.includes('/movie/') || finalPath.includes('/tvshow/') || finalPath.includes('proxy-player')) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  }
+}
+
 // 1. Proxy Player HTML Page Route
 app.get('/api/proxy-player', async (req, res) => {
   const targetUrl = req.query.url;
@@ -344,14 +368,15 @@ app.get('/api/proxy-player', async (req, res) => {
     // Copy response cookies to client
     const setCookie = response.headers.getSetCookie();
     if (setCookie && setCookie.length > 0) {
-      res.setHeader('Set-Cookie', setCookie);
+      res.setHeader('Set-Cookie', setCookie.map(cleanSetCookie));
     }
 
     cleanResponseHeaders(res, response.headers);
+    enforceMimeType(req, res, targetUrl);
     res.status(response.status);
 
     const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('text/html')) {
+    if (contentType.includes('text/html') || targetUrl.includes('/embed2/') || targetUrl.includes('/movie/') || targetUrl.includes('/tvshow/')) {
       let html = await response.text();
       
       // Rewrite Plenoflu relative resources & API calls
@@ -407,10 +432,11 @@ app.all('/proxy-plenoflu/*', async (req, res) => {
     // Forward cookies
     const setCookie = response.headers.getSetCookie();
     if (setCookie && setCookie.length > 0) {
-      res.setHeader('Set-Cookie', setCookie);
+      res.setHeader('Set-Cookie', setCookie.map(cleanSetCookie));
     }
 
     cleanResponseHeaders(res, response.headers);
+    enforceMimeType(req, res, targetUrl);
     res.status(response.status);
 
     const contentType = response.headers.get('content-type') || '';
@@ -481,10 +507,11 @@ const handleLinktudiRequest = async (req, res, relativePath) => {
     // Forward cookies
     const setCookie = response.headers.getSetCookie();
     if (setCookie && setCookie.length > 0) {
-      res.setHeader('Set-Cookie', setCookie);
+      res.setHeader('Set-Cookie', setCookie.map(cleanSetCookie));
     }
 
     cleanResponseHeaders(res, response.headers);
+    enforceMimeType(req, res, targetUrl);
     res.status(response.status);
 
     const contentType = response.headers.get('content-type') || '';
