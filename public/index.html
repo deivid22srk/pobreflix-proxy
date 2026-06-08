@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pobreflix Proxy - Filmes & Séries Online</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Assista a filmes e séries online gratuitamente através do Pobreflix Proxy. Rápido, sem anúncios invasivos e com interface premium.">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Remix Icons (for premium look) -->
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <!-- Header / Navigation -->
+  <header class="main-header" id="main-header">
+    <div class="header-container">
+      <div class="logo-section" onclick="navigateToHome()">
+        <span class="logo-highlight">POBRE</span>FLIX <span class="logo-badge">PROXY</span>
+      </div>
+      
+      <nav class="nav-links">
+        <a href="#" class="nav-item active" id="nav-home" onclick="filterType('all', event)">Início</a>
+        <a href="#" class="nav-item" id="nav-movies" onclick="filterType('movies', event)">Filmes</a>
+        <a href="#" class="nav-item" id="nav-series" onclick="filterType('series', event)">Séries</a>
+      </nav>
+      
+      <div class="search-section">
+        <form id="search-form" onsubmit="handleSearch(event)">
+          <div class="search-box">
+            <i class="ri-search-line search-icon"></i>
+            <input type="text" id="search-input" placeholder="Pesquisar filmes ou séries..." autocomplete="off">
+            <button type="button" class="clear-search-btn" id="clear-search" onclick="clearSearch()" style="display:none;">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section (Featured Content) -->
+  <section class="hero" id="hero-section">
+    <div class="hero-overlay"></div>
+    <div class="hero-content" id="hero-content">
+      <!-- Dynamic Content Loaded here -->
+      <div class="skeleton hero-skeleton"></div>
+    </div>
+  </section>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+    
+    <!-- Home View -->
+    <div id="home-view" class="view-section active">
+      <!-- Featured Row -->
+      <section class="content-row-section" id="row-featured-container">
+        <h2 class="row-title"><i class="ri-fire-fill row-icon-featured"></i> Lançamentos & Destaques</h2>
+        <div class="cards-scroll-container" id="row-featured">
+          <!-- Cards injected here -->
+        </div>
+      </section>
+
+      <!-- Movies Row -->
+      <section class="content-row-section" id="row-movies-container">
+        <h2 class="row-title"><i class="ri-film-line row-icon-movies"></i> Filmes Recentes</h2>
+        <div class="cards-scroll-container" id="row-movies">
+          <!-- Cards injected here -->
+        </div>
+      </section>
+
+      <!-- Series Row -->
+      <section class="content-row-section" id="row-series-container">
+        <h2 class="row-title"><i class="ri-tv-line row-icon-series"></i> Séries Recentes</h2>
+        <div class="cards-scroll-container" id="row-series">
+          <!-- Cards injected here -->
+        </div>
+      </section>
+    </div>
+
+    <!-- Search Results View -->
+    <div id="search-view" class="view-section" style="display: none;">
+      <div class="section-header-bar">
+        <h2 class="section-title" id="search-title">Resultados para "Pesquisa"</h2>
+        <button class="back-btn" onclick="navigateToHome()"><i class="ri-arrow-left-line"></i> Voltar ao Início</button>
+      </div>
+      <div class="results-grid" id="search-results-grid">
+        <!-- Search cards -->
+      </div>
+      <div class="no-results" id="search-no-results" style="display: none;">
+        <i class="ri-emotion-sad-line no-results-icon"></i>
+        <h3>Nenhum resultado encontrado</h3>
+        <p>Tente buscar por termos diferentes ou confira a grafia.</p>
+      </div>
+    </div>
+
+    <!-- Details View (Movie / Series / Episode) -->
+    <div id="details-view" class="view-section" style="display: none;">
+      <!-- Dynamic details go here -->
+      <div class="details-container" id="details-container">
+        <!-- Injected details content -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="footer-content">
+      <p>&copy; 2026 Pobreflix Proxy. Desenvolvido para fins de estudo e acessibilidade.</p>
+      <p class="footer-disclaimer">Aviso: Este site é um proxy e não armazena ou hospeda nenhum arquivo em seus servidores. Apenas facilita a navegação e visualização de conteúdo disponível publicamente.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
